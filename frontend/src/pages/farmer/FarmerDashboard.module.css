@@ -1,0 +1,315 @@
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.pageTitle {
+    font-size: 1.5rem;
+    font-family: var(--font-heading);
+    color: var(--text-main);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.pageSubtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.kpiGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.kpiCard {
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius-md);
+    padding: 24px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+}
+
+.kpiHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.kpiIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconDanger {
+    background-color: rgba(211, 47, 47, 0.1);
+    color: var(--danger);
+}
+.iconWarning {
+    background-color: rgba(239, 108, 0, 0.1);
+    color: var(--warning);
+}
+.iconPrimary {
+    background-color: rgba(46, 125, 50, 0.1);
+    color: var(--primary);
+}
+
+.kpiLabel {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.kpiValue {
+    font-size: 1.5rem;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.valueDanger {
+    color: var(--danger);
+}
+.valueWarning {
+    color: var(--warning);
+}
+.valuePrimary {
+    color: var(--primary);
+}
+
+.kpiAction {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background-color: var(--bg-problem);
+    padding: 8px 12px;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+}
+
+.contentGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+
+.sectionCard {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+}
+
+.sectionTitle {
+    font-size: 1.2rem;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 24px;
+}
+
+.chartContainer {
+    height: 320px;
+    width: 100%;
+}
+
+.advisorForm {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.formLabel {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.formControl {
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    background-color: var(--bg-features);
+    color: var(--text-main);
+}
+
+.formControlFixed {
+    background-color: var(--bg-problem);
+    cursor: not-allowed;
+}
+
+.generateBtn {
+    background-color: var(--primary);
+    color: var(--text-light);
+    border: none;
+    padding: 14px;
+    border-radius: var(--border-radius-sm);
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.generateBtn:hover {
+    background-color: var(--primary-hover);
+}
+
+.phonePreview {
+    margin-top: 24px;
+    border: 8px solid #1e272c;
+    border-radius: 36px;
+    overflow: hidden;
+    background-color: #eceff1;
+    position: relative;
+}
+
+.phoneHeader {
+    background-color: var(--bg-card);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.phoneAppTitle {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.phoneBody {
+    padding: 20px;
+    min-height: 250px;
+}
+
+.smsBubble {
+    background-color: var(--bg-card);
+    padding: 16px;
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    font-size: 0.9rem;
+    color: var(--text-main);
+    line-height: 1.5;
+    border-left: 4px solid var(--warning);
+}
+
+.smsMeta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.aiBadge {
+    background-color: rgba(79, 195, 247, 0.2);
+    color: #0288d1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.toggleContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.toggleLabel {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.transparencyPanel {
+    background-color: var(--bg-sdg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 24px;
+}
+
+.transparencyHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.transparencyTitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    font-family: var(--font-heading);
+}
+
+.modelTable {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--bg-card);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.modelTable th,
+.modelTable td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.modelTable th {
+    background-color: var(--bg-problem);
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.disclaimer {
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+@media (max-width: 1024px) {
+    .contentGrid {
+        grid-template-columns: 1fr;
+    }
+}
