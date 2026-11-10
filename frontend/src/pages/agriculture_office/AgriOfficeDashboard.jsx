@@ -1,229 +1,205 @@
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
+import { useEffect, useState } from "react";
+import ForecastChart from "../../components/ForecastChart";
 import styles from "./AgriOfficeDashboard.module.css";
+import {
+    CROPS,
+    assessRisk,
+    assessMonth,
+    upcomingMonths,
+    RISK_STYLE,
+    ACTION_SHORT,
+} from "../../risk";
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-);
+const WARNING_PATH =
+    "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01";
 
-const MOCK_KPIS = [
-    {
-        id: 1,
-        label: "Total Farmers",
-        value: "1,245",
-        styleClass: styles.cardSecondary,
-        iconPath:
-            "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
-    },
-    {
-        id: 2,
-        label: "Favorable Areas",
-        value: "2 Brgy",
-        styleClass: styles.cardPrimary,
-        iconPath: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
-    },
-    {
-        id: 3,
-        label: "High Risk Areas",
-        value: "5 Brgy",
-        styleClass: styles.cardDanger,
-        iconPath:
-            "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01",
-    },
-    {
-        id: 4,
-        label: "Pending Thresholds",
-        value: "3",
-        styleClass: styles.cardAccent,
-        iconPath:
-            "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
-    },
-];
-
-const MOCK_TABLE_DATA = [
-    {
-        id: 1,
-        crop: "Rainfed Rice",
-        statusText: "Pending Technician Review",
-        statusColor: "var(--text-muted)",
-        m1: { text: "Delay Planting", class: styles.statusHigh },
-        m2: { text: "Delay Planting", class: styles.statusHigh },
-        m3: { text: "Monitor Closely", class: styles.statusMedium },
-    },
-    {
-        id: 2,
-        crop: "Rainfed Corn",
-        statusText: "Confirmed (DA Baseline)",
-        statusColor: "var(--primary)",
-        m1: { text: "Assess Moisture", class: styles.statusMedium },
-        m2: { text: "Delay Planting", class: styles.statusHigh },
-        m3: { text: "Favorable Window", class: styles.statusLow },
-    },
-];
-
-const CHART_DATA = {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-    datasets: [
-        {
-            label: "Forecasted Rainfall (mm)",
-            data: [120, 85, 45, 60],
-            borderColor: "#4fc3f7",
-            backgroundColor: "#4fc3f7",
-            tension: 0.4,
-        },
-        {
-            label: "Rice Min Requirement",
-            data: [200, 200, 200, 200],
-            borderColor: "#2e7d32",
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false,
-        },
-        {
-            label: "Corn Min Requirement",
-            data: [100, 100, 100, 100],
-            borderColor: "#f9a825",
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false,
-        },
-    ],
+const CARD_CLASS = {
+    LOW: styles.cardPrimary,
+    MEDIUM: styles.cardAccent,
+    HIGH: styles.cardDanger,
+};
+const STATUS_CLASS = {
+    LOW: styles.statusLow,
+    MEDIUM: styles.statusMedium,
+    HIGH: styles.statusHigh,
 };
 
-const CHART_OPTIONS = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: "bottom",
-            labels: { font: { family: "'Inter', sans-serif" } },
-        },
-    },
-    scales: {
-        y: { beginAtZero: true, grid: { color: "#e0e6ed" } },
-        x: { grid: { display: false } },
-    },
-};
+function KpiCard({ label, value, className }) {
+    return (
+        <div className={`${styles.kpiCard} ${className}`}>
+            <div className={styles.kpiIcon}>
+                <svg
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                >
+                    <path d={WARNING_PATH}></path>
+                </svg>
+            </div>
+            <div className={styles.kpiInfo}>
+                <span className={styles.kpiLabel}>{label}</span>
+                <span className={styles.kpiValue}>{value}</span>
+            </div>
+        </div>
+    );
+}
 
 export default function AgriOfficeDashboard() {
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(false);
+    const [cropFilter, setCropFilter] = useState("All");
+
+    useEffect(() => {
+        fetch("/forecast.json")
+            .then((r) => {
+                if (!r.ok) throw new Error("missing forecast.json");
+                return r.json();
+            })
+            .then(setData)
+            .catch(() => setError(true));
+    }, []);
+
+    if (error) {
+        return (
+            <div className={styles.dashboard}>
+                <h1 className={styles.pageTitle}>Pilot Area Overview</h1>
+                <p>
+                    forecast.json not found. Run <code>python forecast.py</code>{" "}
+                    in the backend folder first.
+                </p>
+            </div>
+        );
+    }
+    if (!data) {
+        return (
+            <div className={styles.dashboard}>
+                <p>Loading forecast…</p>
+            </div>
+        );
+    }
+
+    const cycleFilter = () =>
+        setCropFilter((f) => (f === "All" ? "Rice" : f === "Rice" ? "Corn" : "All"));
+
+    const riceResult = assessRisk("Rice", data.forecast);
+    const cornResult = assessRisk("Corn", data.forecast);
+    const oni = data.latest_oni;
+    const best = data.model_stats[data.best_model];
+    const months = upcomingMonths(data.forecast).slice(0, 3);
+    const crops = cropFilter === "All" ? ["Rice", "Corn"] : [cropFilter];
+
     return (
         <div className={styles.dashboard}>
             <div className={styles.headerRow}>
-                <h1 className={styles.pageTitle}>Pilot Area Overview</h1>
-                <button className={styles.filterBtn}>
-                    <svg
-                        viewBox="0 0 24 24"
-                        width="16"
-                        height="16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                <h1 className={styles.pageTitle}>
+                    Pilot Area Overview{" "}
+                    <span
+                        style={{
+                            fontSize: "0.75rem",
+                            fontWeight: 500,
+                            padding: "4px 10px",
+                            borderRadius: "999px",
+                            background: "#eef3f8",
+                            color: "#546e7a",
+                            marginLeft: "8px",
+                            verticalAlign: "middle",
+                        }}
                     >
-                        <line x1="4" y1="21" x2="4" y2="14"></line>
-                        <line x1="4" y1="10" x2="4" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12" y2="3"></line>
-                        <line x1="20" y1="21" x2="20" y2="16"></line>
-                        <line x1="20" y1="12" x2="20" y2="3"></line>
-                        <line x1="1" y1="14" x2="7" y2="14"></line>
-                        <line x1="9" y1="8" x2="15" y2="8"></line>
-                        <line x1="17" y1="16" x2="23" y2="16"></line>
-                    </svg>
-                    Filter by Crop
+                        {data.location} · thresholds provisional
+                    </span>
+                </h1>
+                <button className={styles.filterBtn} onClick={cycleFilter}>
+                    Crop: {cropFilter}
                 </button>
             </div>
 
             <div className={styles.kpiGrid}>
-                {MOCK_KPIS.map((kpi) => (
-                    <div
-                        key={kpi.id}
-                        className={`${styles.kpiCard} ${kpi.styleClass}`}
-                    >
-                        <div className={styles.kpiIcon}>
-                            <svg
-                                viewBox="0 0 24 24"
-                                width="24"
-                                height="24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path d={kpi.iconPath}></path>
-                            </svg>
-                        </div>
-                        <div className={styles.kpiInfo}>
-                            <span className={styles.kpiLabel}>{kpi.label}</span>
-                            <span className={styles.kpiValue}>{kpi.value}</span>
-                        </div>
-                    </div>
-                ))}
+                <KpiCard
+                    label="Rainfed Rice Risk"
+                    value={RISK_STYLE[riceResult.risk].label}
+                    className={CARD_CLASS[riceResult.risk]}
+                />
+                <KpiCard
+                    label="Rainfed Corn Risk"
+                    value={RISK_STYLE[cornResult.risk].label}
+                    className={CARD_CLASS[cornResult.risk]}
+                />
+                <KpiCard
+                    label="El Niño Index (ONI)"
+                    value={`${oni > 0 ? "+" : ""}${oni.toFixed(1)}`}
+                    className={styles.cardSecondary}
+                />
+                <KpiCard
+                    label={`Model in use · MAE ${Math.round(best.mae)} mm`}
+                    value={data.best_model}
+                    className={styles.cardPrimary}
+                />
             </div>
 
             <div className={styles.chartSection}>
                 <h3 className={styles.sectionTitle}>
-                    Monthly Rainfall Trends vs. Crop Requirements
+                    Monthly Rainfall Forecast vs. Crop Requirements
                 </h3>
-                <div className={styles.chartContainer}>
-                    <Line data={CHART_DATA} options={CHART_OPTIONS} />
-                </div>
+                <ForecastChart
+                    forecast={data.forecast}
+                    needCrops={crops}
+                    riskCrop={cropFilter === "All" ? null : cropFilter}
+                />
             </div>
 
             <div className={styles.tableSection}>
-                <h2>System Activity Summary & Validation</h2>
+                <h2>Month-by-Month Recommended Action</h2>
                 <div className={styles.tableContainer}>
                     <table className={styles.dataGrid}>
                         <thead>
                             <tr>
                                 <th>Crop Type</th>
                                 <th>Validation Status</th>
-                                <th>Month 1 Action</th>
-                                <th>Month 2 Action</th>
-                                <th>Month 3 Action</th>
+                                {months.map((m) => (
+                                    <th key={m.month}>{m.label}</th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {MOCK_TABLE_DATA.map((row) => (
-                                <tr key={row.id}>
+                            {crops.map((crop) => (
+                                <tr key={crop}>
                                     <td
                                         style={{
                                             color: "var(--text-main)",
                                             fontWeight: 500,
                                         }}
                                     >
-                                        {row.crop}
+                                        {CROPS[crop].en}
                                     </td>
-                                    <td style={{ color: row.statusColor }}>
-                                        {row.statusText}
+                                    <td style={{ color: "var(--text-muted)" }}>
+                                        Provisional - pending technician review
                                     </td>
-                                    <td className={row.m1.class}>
-                                        {row.m1.text}
-                                    </td>
-                                    <td className={row.m2.class}>
-                                        {row.m2.text}
-                                    </td>
-                                    <td className={row.m3.class}>
-                                        {row.m3.text}
-                                    </td>
+                                    {months.map((m) => {
+                                        const r = assessMonth(crop, m);
+                                        return (
+                                            <td
+                                                key={m.month}
+                                                className={STATUS_CLASS[r.risk]}
+                                            >
+                                                {RISK_STYLE[r.risk].label}:{" "}
+                                                {ACTION_SHORT[r.action]}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                    Forecast from {data.data_source}, using data through{" "}
+                    {data.issue_month}. Advice is decision support for
+                    technician review; PAGASA's official forecasts remain the
+                    primary reference.
+                </p>
             </div>
         </div>
     );

@@ -1,11 +1,53 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+const ACCOUNTS_STORAGE_KEY = "call-a-baw-accounts";
+
+async function getAccounts() {
+    const savedAccounts = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+    if (savedAccounts) {
+        return JSON.parse(savedAccounts);
+    }
+
+    const response = await fetch("/accounts.json");
+    if (!response.ok) {
+        throw new Error("Unable to load account data.");
+    }
+
+    return response.json();
+}
 
 export default function AuthModals({ type, isOpen, onClose, setType }) {
     const navigate = useNavigate();
+    const [authError, setAuthError] = useState("");
 
-    const handleLoginSubmit = (e) => {
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
-        const role = document.getElementById("loginRole").value;
+        const formData = new FormData(e.currentTarget);
+        const role = formData.get("role");
+        const identifier = formData.get("identifier").trim().toLowerCase();
+        const password = formData.get("password");
+
+        try {
+            const accounts = await getAccounts();
+            const account = accounts.find(
+                (candidate) =>
+                    candidate.role === role &&
+                    ((candidate.email || "").toLowerCase() === identifier ||
+                        candidate.phone === identifier) &&
+                    candidate.password === password,
+            );
+
+            if (!account) {
+                setAuthError("Invalid role, email/phone number, or password.");
+                return;
+            }
+        } catch (error) {
+            setAuthError(error.message);
+            return;
+        }
+
+        setAuthError("");
         onClose();
         navigate(
             role === "officer"
@@ -16,10 +58,28 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
 
     const handleSignupSubmit = (e) => {
         e.preventDefault();
-        alert(
-            "Registration successful! You will now receive localized advisory previews.",
-        );
-        onClose();
+        const formData = new FormData(e.currentTarget);
+        const account = {
+            name: formData.get("name").trim(),
+            phone: formData.get("phone").trim(),
+            password: formData.get("password"),
+            role: "farmer",
+        };
+
+        getAccounts()
+            .then((accounts) => {
+                const updatedAccounts = [...accounts, account];
+                localStorage.setItem(
+                    ACCOUNTS_STORAGE_KEY,
+                    JSON.stringify(updatedAccounts),
+                );
+                setAuthError("");
+                alert(
+                    "Registration successful! You can now log in with your phone number and password.",
+                );
+                setType("login");
+            })
+            .catch((error) => setAuthError(error.message));
     };
 
     if (!isOpen) return null;
@@ -56,6 +116,7 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
                             <label htmlFor="loginRole">Select Your Role</label>
                             <select
                                 id="loginRole"
+                                name="role"
                                 className="form-control"
                                 required
                             >
@@ -72,6 +133,7 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
                             <input
                                 type="text"
                                 id="loginEmail"
+                                name="identifier"
                                 className="form-control"
                                 placeholder="e.g. 09171234567 or user@example.com"
                                 required
@@ -82,11 +144,13 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
                             <input
                                 type="password"
                                 id="loginPassword"
+                                name="password"
                                 className="form-control"
                                 placeholder="••••••••"
                                 required
                             />
                         </div>
+                        {authError && <p className="auth-error">{authError}</p>}
                         <button
                             type="submit"
                             className="btn btn-primary btn-block"
@@ -142,6 +206,7 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
                             <input
                                 type="text"
                                 id="signupName"
+                                name="name"
                                 className="form-control"
                                 placeholder="Juan Dela Cruz"
                                 required
@@ -154,6 +219,7 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
                             <input
                                 type="tel"
                                 id="signupPhone"
+                                name="phone"
                                 className="form-control"
                                 placeholder="09171234567"
                                 required
@@ -164,11 +230,13 @@ export default function AuthModals({ type, isOpen, onClose, setType }) {
                             <input
                                 type="password"
                                 id="signupPassword"
+                                name="password"
                                 className="form-control"
                                 placeholder="Create password"
                                 required
                             />
                         </div>
+                        {authError && <p className="auth-error">{authError}</p>}
                         <button
                             type="submit"
                             className="btn btn-primary btn-block"

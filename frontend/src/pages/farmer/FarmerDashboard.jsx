@@ -1,94 +1,85 @@
-import { useState } from "react";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
+import { useEffect, useState } from "react";
+import ForecastChart from "../../components/ForecastChart";
 import styles from "./FarmerDashboard.module.css";
+import {
+    CROPS,
+    assessRisk,
+    assessMonth,
+    upcomingMonths,
+    buildSms,
+    RISK_STYLE,
+    ACTION_SHORT,
+    THRESHOLDS,
+} from "../../risk";
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler,
-);
+const RISK_COLOR = {
+    LOW: "var(--primary)",
+    MEDIUM: "var(--warning)",
+    HIGH: "var(--danger)",
+};
+const RISK_BG = { LOW: "#e8f5e9", MEDIUM: "#fff3e0", HIGH: "#fdecea" };
+const CARD = {
+    background: "#fff",
+    border: "1px solid var(--border-color)",
+    borderRadius: "var(--border-radius-md)",
+    boxShadow: "var(--shadow-sm)",
+    padding: "20px 24px",
+};
+
+function oniStatus(oni) {
+    if (oni >= 0.5) return { text: "El Niño conditions", tone: "warning" };
+    if (oni <= -0.5) return { text: "La Niña conditions", tone: "primary" };
+    return { text: "Neutral", tone: "primary" };
+}
 
 export default function FarmerDashboard() {
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(false);
     const [selectedCrop, setSelectedCrop] = useState("Rice");
     const [isFilipino, setIsFilipino] = useState(false);
     const [showAdvice, setShowAdvice] = useState(false);
 
-    const handleGenerateAdvice = () => {
-        setShowAdvice(true);
-    };
+    useEffect(() => {
+        fetch("/forecast.json")
+            .then((r) => {
+                if (!r.ok) throw new Error("missing forecast.json");
+                return r.json();
+            })
+            .then(setData)
+            .catch(() => setError(true));
+    }, []);
 
-    const chartData = {
-        labels: ["Oct", "Nov", "Dec", "Jan"],
-        datasets: [
-            {
-                label: "Upper Forecast Bound",
-                data: [150, 110, 80, 95],
-                borderColor: "rgba(79, 195, 247, 0)",
-                backgroundColor: "rgba(79, 195, 247, 0.2)",
-                fill: 1,
-                pointRadius: 0,
-                tension: 0.4,
-            },
-            {
-                label: "Lower Forecast Bound",
-                data: [90, 60, 30, 45],
-                borderColor: "rgba(79, 195, 247, 0)",
-                backgroundColor: "transparent",
-                fill: false,
-                pointRadius: 0,
-                tension: 0.4,
-            },
-            {
-                label: "Expected Rainfall (mm)",
-                data: [120, 85, 55, 70],
-                borderColor: "#4fc3f7",
-                backgroundColor: "#4fc3f7",
-                borderWidth: 2,
-                tension: 0.4,
-            },
-            {
-                label: "Historical Baseline (PAGASA)",
-                data: [210, 180, 150, 120],
-                borderColor: "#263238",
-                borderDash: [5, 5],
-                fill: false,
-                pointRadius: 0,
-                borderWidth: 1.5,
-                tension: 0.4,
-            },
-        ],
-    };
+    if (error) {
+        return (
+            <div className={styles.dashboard}>
+                <h1 className={styles.pageTitle}>Planting Advisor</h1>
+                <p className={styles.pageSubtitle}>
+                    forecast.json not found. Run <code>python forecast.py</code>{" "}
+                    in the backend folder first.
+                </p>
+            </div>
+        );
+    }
+    if (!data) {
+        return (
+            <div className={styles.dashboard}>
+                <p className={styles.pageSubtitle}>Loading forecast…</p>
+            </div>
+        );
+    }
 
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: { font: { family: "'Inter', sans-serif" } },
-            },
-        },
-        scales: {
-            y: { beginAtZero: true, grid: { color: "#e0e6ed" } },
-            x: { grid: { display: false } },
-        },
-    };
+    const riceResult = assessRisk("Rice", data.forecast);
+    const cornResult = assessRisk("Corn", data.forecast);
+    const selected = selectedCrop === "Rice" ? riceResult : cornResult;
+    const sms = buildSms(selected, isFilipino ? "fil" : "en");
+    const oni = oniStatus(data.latest_oni);
+    const months = upcomingMonths(data.forecast).slice(0, 3);
+    const spanLabel = months
+        .slice(0, 2)
+        .map((m) => m.label)
+        .join(" & ");
+
+    const bestStyle = { fontWeight: 600, color: "var(--primary)" };
 
     return (
         <div className={styles.dashboard}>
@@ -96,96 +87,150 @@ export default function FarmerDashboard() {
                 <div>
                     <h1 className={styles.pageTitle}>Planting Advisor</h1>
                     <p className={styles.pageSubtitle}>
-                        Localized climate risk tracking and prescriptive farm
-                        actions.
+                        {data.location} · forecast issued from data through{" "}
+                        {data.issue_month}
                     </p>
+                </div>
+                <div
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        background:
+                            oni.tone === "warning" ? "#fff3e0" : "#e8f5e9",
+                        color:
+                            oni.tone === "warning"
+                                ? "var(--warning)"
+                                : "var(--primary)",
+                        border: "1px solid currentColor",
+                        borderRadius: "999px",
+                        padding: "8px 16px",
+                        fontWeight: 600,
+                    }}
+                >
+                    El Niño index {data.latest_oni > 0 ? "+" : ""}
+                    {data.latest_oni.toFixed(1)} · {oni.text}
                 </div>
             </div>
 
-            <div className={styles.kpiGrid}>
-                <div className={styles.kpiCard}>
-                    <div className={styles.kpiHeader}>
-                        <div
-                            className={`${styles.kpiIcon} ${styles.iconDanger}`}
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                width="20"
-                                height="20"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                <line x1="12" y1="9" x2="12" y2="13"></line>
-                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                            </svg>
-                        </div>
-                        <span className={styles.kpiLabel}>Rice Crop Risk</span>
-                    </div>
-                    <div className={`${styles.kpiValue} ${styles.valueDanger}`}>
-                        High Risk
-                    </div>
-                    <div className={styles.kpiAction}>
-                        Action: Delay planting 30 days
-                    </div>
-                </div>
+            <div
+                style={{
+                    background: "#eef3f8",
+                    color: "var(--text-muted)",
+                    borderRadius: "var(--border-radius-sm)",
+                    padding: "8px 14px",
+                    fontSize: "0.85rem",
+                    marginBottom: "20px",
+                }}
+            >
+                Prototype: SMS is preview-only, crop thresholds are
+                provisional, and PAGASA's official forecast remains the
+                primary reference.
+            </div>
 
-                <div className={styles.kpiCard}>
-                    <div className={styles.kpiHeader}>
-                        <div
-                            className={`${styles.kpiIcon} ${styles.iconWarning}`}
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                width="20"
-                                height="20"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                            </svg>
-                        </div>
-                        <span className={styles.kpiLabel}>Corn Crop Risk</span>
-                    </div>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                    gap: "20px",
+                    marginBottom: "24px",
+                }}
+            >
+                {[riceResult, cornResult].map((r) => (
                     <div
-                        className={`${styles.kpiValue} ${styles.valueWarning}`}
+                        key={r.crop}
+                        style={{
+                            ...CARD,
+                            borderLeft: `6px solid ${RISK_COLOR[r.risk]}`,
+                        }}
                     >
-                        Medium Risk
-                    </div>
-                    <div className={styles.kpiAction}>
-                        Action: Assess soil moisture
-                    </div>
-                </div>
-
-                <div className={styles.kpiCard}>
-                    <div className={styles.kpiHeader}>
                         <div
-                            className={`${styles.kpiIcon} ${styles.iconDanger}`}
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                            }}
                         >
-                            <svg
-                                viewBox="0 0 24 24"
-                                width="20"
-                                height="20"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
+                            <span
+                                style={{
+                                    fontSize: "0.8rem",
+                                    color: "var(--text-muted)",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.05em",
+                                }}
                             >
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                            </svg>
+                                {CROPS[r.crop].en}
+                            </span>
+                            <span
+                                style={{
+                                    background: RISK_BG[r.risk],
+                                    color: RISK_COLOR[r.risk],
+                                    borderRadius: "999px",
+                                    padding: "2px 12px",
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                }}
+                            >
+                                {RISK_STYLE[r.risk].label}
+                            </span>
                         </div>
-                        <span className={styles.kpiLabel}>
-                            Predictive Heat Index
-                        </span>
+                        <div
+                            style={{
+                                fontFamily: "var(--font-heading)",
+                                fontSize: "1.5rem",
+                                fontWeight: 700,
+                                color: RISK_COLOR[r.risk],
+                                margin: "4px 0",
+                            }}
+                        >
+                            {ACTION_SHORT[r.action]}
+                        </div>
+                        <div style={{ color: "var(--text-main)" }}>
+                            {spanLabel}: {r.expectedMm} mm/month expected vs{" "}
+                            {r.normalMm} mm normal.
+                        </div>
                     </div>
-                    <div className={`${styles.kpiValue} ${styles.valueDanger}`}>
-                        42°C (Extreme)
+                ))}
+            </div>
+
+            <div style={{ ...CARD, marginBottom: "24px" }}>
+                <h3 className={styles.sectionTitle}>Month-by-Month Outlook</h3>
+                {["Rice", "Corn"].map((crop) => (
+                    <div
+                        key={crop}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            flexWrap: "wrap",
+                            marginTop: "10px",
+                        }}
+                    >
+                        <strong style={{ width: "110px" }}>
+                            {CROPS[crop].en}
+                        </strong>
+                        {months.map((m) => {
+                            const r = assessMonth(crop, m);
+                            return (
+                                <div
+                                    key={m.month}
+                                    style={{
+                                        background: RISK_BG[r.risk],
+                                        color: RISK_COLOR[r.risk],
+                                        border: `1px solid ${RISK_COLOR[r.risk]}`,
+                                        borderRadius: "999px",
+                                        padding: "6px 14px",
+                                        fontWeight: 600,
+                                        fontSize: "0.9rem",
+                                    }}
+                                >
+                                    {m.label}: {RISK_STYLE[r.risk].label} ·{" "}
+                                    {ACTION_SHORT[r.action]}
+                                </div>
+                            );
+                        })}
                     </div>
-                    <div className={styles.kpiAction}>
-                        Action: Restrict field work 10AM-3PM
-                    </div>
-                </div>
+                ))}
             </div>
 
             <div className={styles.contentGrid}>
@@ -194,29 +239,71 @@ export default function FarmerDashboard() {
                         <h3 className={styles.sectionTitle}>
                             Local Rainfall Forecast Outlook (1-3 Months)
                         </h3>
-                        <div className={styles.chartContainer}>
-                            <Line data={chartData} options={chartOptions} />
-                        </div>
+                        <ForecastChart
+                            forecast={data.forecast}
+                            needCrops={[selectedCrop]}
+                            riskCrop={selectedCrop}
+                        />
                     </div>
+
+                    <details
+                        open
+                        style={{ ...CARD, marginTop: "24px" }}
+                    >
+                        <summary
+                            style={{ cursor: "pointer", fontWeight: 600 }}
+                        >
+                            Why this advice? ({CROPS[selectedCrop].en})
+                        </summary>
+                        <table
+                            className={styles.modelTable}
+                            style={{ marginTop: "12px" }}
+                        >
+                            <tbody>
+                                <tr>
+                                    <td>Expected rainfall (avg. {spanLabel})</td>
+                                    <td>{selected.expectedMm} mm/month</td>
+                                </tr>
+                                <tr>
+                                    <td>Normal rainfall, same months</td>
+                                    <td>{selected.normalMm} mm/month</td>
+                                </tr>
+                                <tr>
+                                    <td>Crop water need (provisional)</td>
+                                    <td>{selected.needMm} mm/month</td>
+                                </tr>
+                                <tr>
+                                    <td>Expected ÷ need</td>
+                                    <td>{selected.ratioNeed.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Expected ÷ normal</td>
+                                    <td>{selected.ratioNormal.toFixed(2)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p
+                            style={{
+                                color: "var(--text-muted)",
+                                fontSize: "0.85rem",
+                                marginTop: "12px",
+                            }}
+                        >
+                            Rules: HIGH if either ratio is below{" "}
+                            {THRESHOLDS.HIGH_BELOW}; MEDIUM if expected ÷ need
+                            is below {THRESHOLDS.MEDIUM_NEED_BELOW} or expected
+                            ÷ normal is below {THRESHOLDS.MEDIUM_NORMAL_BELOW};
+                            otherwise LOW. Result: {selected.risk} →{" "}
+                            {ACTION_SHORT[selected.action]}. This decision is
+                            made by fixed rules, not by AI.
+                        </p>
+                    </details>
 
                     <div
                         className={styles.transparencyPanel}
                         style={{ marginTop: "24px" }}
                     >
                         <div className={styles.transparencyHeader}>
-                            <svg
-                                viewBox="0 0 24 24"
-                                width="24"
-                                height="24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                style={{ color: "var(--accent)" }}
-                            >
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
                             <h3 className={styles.transparencyTitle}>
                                 AI Model Transparency
                             </h3>
@@ -225,53 +312,39 @@ export default function FarmerDashboard() {
                             <thead>
                                 <tr>
                                     <th>Predictive Model</th>
-                                    <th>Mean Absolute Error (MAE)</th>
-                                    <th>Root Mean Square Error (RMSE)</th>
+                                    <th>MAE</th>
+                                    <th>RMSE</th>
+                                    <th>Range hit rate</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>Seasonal Baseline (Historical)</td>
-                                    <td>28.4 mm</td>
-                                    <td>35.1 mm</td>
-                                </tr>
-                                <tr>
-                                    <td>El Niño Analog Method</td>
-                                    <td>19.2 mm</td>
-                                    <td>22.6 mm</td>
-                                </tr>
-                                <tr>
-                                    <td
-                                        style={{
-                                            fontWeight: 600,
-                                            color: "var(--primary)",
-                                        }}
-                                    >
-                                        XGBoost (Active)
-                                    </td>
-                                    <td
-                                        style={{
-                                            fontWeight: 600,
-                                            color: "var(--primary)",
-                                        }}
-                                    >
-                                        12.5 mm
-                                    </td>
-                                    <td
-                                        style={{
-                                            fontWeight: 600,
-                                            color: "var(--primary)",
-                                        }}
-                                    >
-                                        15.3 mm
-                                    </td>
-                                </tr>
+                                {Object.entries(data.model_stats).map(
+                                    ([name, s]) => {
+                                        const isBest = name === data.best_model;
+                                        const st = isBest ? bestStyle : {};
+                                        return (
+                                            <tr key={name}>
+                                                <td style={st}>
+                                                    {name}
+                                                    {isBest ? " (in use)" : ""}
+                                                </td>
+                                                <td style={st}>{s.mae} mm</td>
+                                                <td style={st}>{s.rmse} mm</td>
+                                                <td style={st}>
+                                                    {s.range_coverage_pct}%
+                                                </td>
+                                            </tr>
+                                        );
+                                    },
+                                )}
                             </tbody>
                         </table>
                         <div className={styles.disclaimer}>
-                            <strong>Note:</strong> PAGASA's official regional
-                            forecasts serve as the primary foundational
-                            reference for these local municipality predictions.
+                            <strong>Note:</strong> Tested month by month on
+                            years the models had not seen. Rainfall data is
+                            satellite/reanalysis-based ({data.data_source}).
+                            PAGASA's official forecasts remain the primary
+                            reference.
                         </div>
                     </div>
                 </div>
@@ -289,7 +362,7 @@ export default function FarmerDashboard() {
                                 <input
                                     type="text"
                                     className={`${styles.formControl} ${styles.formControlFixed}`}
-                                    value="Pilot Municipality"
+                                    value={data.location}
                                     readOnly
                                 />
                             </div>
@@ -310,20 +383,8 @@ export default function FarmerDashboard() {
                             </div>
                             <button
                                 className={styles.generateBtn}
-                                onClick={handleGenerateAdvice}
+                                onClick={() => setShowAdvice(true)}
                             >
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    width="20"
-                                    height="20"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                >
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
                                 Generate Advice
                             </button>
                         </div>
@@ -332,88 +393,18 @@ export default function FarmerDashboard() {
                             <div className={styles.phonePreview}>
                                 <div className={styles.phoneHeader}>
                                     <div className={styles.phoneAppTitle}>
-                                        Messages
+                                        Messages (preview only, not sent)
                                     </div>
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        width="16"
-                                        height="16"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    >
-                                        <circle cx="12" cy="12" r="1"></circle>
-                                        <circle cx="12" cy="5" r="1"></circle>
-                                        <circle cx="12" cy="19" r="1"></circle>
-                                    </svg>
                                 </div>
                                 <div className={styles.phoneBody}>
                                     <div className={styles.smsBubble}>
-                                        {isFilipino ? (
-                                            <>
-                                                <strong>
-                                                    CALL-A-BAW ALERT
-                                                </strong>
-                                                <br />
-                                                <br />
-                                                <strong>TANIM:</strong>{" "}
-                                                {selectedCrop === "Rice"
-                                                    ? "Palay"
-                                                    : "Mais"}
-                                                <br />
-                                                <strong>PELIGRO:</strong>{" "}
-                                                {selectedCrop === "Rice"
-                                                    ? "MATAAS"
-                                                    : "KATAMTAMAN"}{" "}
-                                                (Dry Spell)
-                                                <br />
-                                                <strong>ULAN:</strong>{" "}
-                                                Inaasahang bababa ng 55mm sa
-                                                susunod na buwan.
-                                                <br />
-                                                <strong>PAYO:</strong>{" "}
-                                                {selectedCrop === "Rice"
-                                                    ? "Ipagpaliban muna ang pagtatanim. Maghintay ng ulan bago magpunla."
-                                                    : "Suriin ang basa ng lupa. Maaaring magtanim kung sapat ang tubig."}
-                                                <br />
-                                                <br />
-                                                Sangguniin ang inyong Municipal
-                                                Agriculturist.
-                                            </>
-                                        ) : (
-                                            <>
-                                                <strong>
-                                                    CALL-A-BAW ALERT
-                                                </strong>
-                                                <br />
-                                                <br />
-                                                <strong>CROP:</strong>{" "}
-                                                {selectedCrop}
-                                                <br />
-                                                <strong>RISK:</strong>{" "}
-                                                {selectedCrop === "Rice"
-                                                    ? "HIGH"
-                                                    : "MEDIUM"}{" "}
-                                                (Dry Spell)
-                                                <br />
-                                                <strong>FORECAST:</strong>{" "}
-                                                Rainfall expected to drop to
-                                                55mm next month.
-                                                <br />
-                                                <strong>ADVICE:</strong>{" "}
-                                                {selectedCrop === "Rice"
-                                                    ? "Delay planting. Wait for consistent rain before sowing."
-                                                    : "Assess soil moisture. Proceed with planting only if irrigation is available."}
-                                                <br />
-                                                <br />
-                                                Consult your Municipal
-                                                Agriculturist.
-                                            </>
-                                        )}
+                                        <div style={{ whiteSpace: "pre-line" }}>
+                                            {sms}
+                                        </div>
                                         <div className={styles.smsMeta}>
-                                            <span>Just Now</span>
+                                            <span>{sms.length} / 160 chars</span>
                                             <span className={styles.aiBadge}>
-                                                AI-Assisted
+                                                Template message
                                             </span>
                                         </div>
                                     </div>
@@ -437,6 +428,13 @@ export default function FarmerDashboard() {
                                 <span className={styles.toggleLabel}>FIL</span>
                             </div>
                         )}
+
+                        <div className={styles.disclaimer}>
+                            Risk rules use provisional water-need values
+                            (rice {CROPS.Rice.needMm} mm/month, corn{" "}
+                            {CROPS.Corn.needMm} mm/month), pending DA/PhilRice
+                            or technician confirmation.
+                        </div>
                     </div>
                 </div>
             </div>

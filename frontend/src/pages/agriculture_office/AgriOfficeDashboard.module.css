@@ -19,6 +19,23 @@
     font-weight: 700;
 }
 
+.titleGroup {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: var(--bg-sdg);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
 .filterBtn {
     display: flex;
     align-items: center;

@@ -1,0 +1,16 @@
+[
+    {
+        "name": "Demo Farmer",
+        "role": "farmer",
+        "email": "farmer@example.com",
+        "phone": "09171234567",
+        "password": "Farmer123!"
+    },
+    {
+        "name": "Demo Agricultural Officer",
+        "role": "officer",
+        "email": "officer@example.com",
+        "phone": "09179876543",
+        "password": "Officer123!"
+    }
+]

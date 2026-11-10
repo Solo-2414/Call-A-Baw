@@ -1,0 +1,61 @@
+{
+  "location": "Alitagtag, Batangas",
+  "lat": 13.87,
+  "lon": 121.0,
+  "data_source": "NASA POWER PRECTOTCORR (satellite/reanalysis) + NOAA ONI",
+  "generated_on": "2026-11-10",
+  "issue_month": "2026-09",
+  "latest_oni": 2.16,
+  "best_model": "El Nino analog",
+  "model_stats": {
+    "El Nino analog": {
+      "mae": 93.5,
+      "rmse": 135.1,
+      "range_coverage_pct": 51.4,
+      "n_tests": 531,
+      "mae_by_horizon": {
+        "1": 94.1,
+        "2": 92.4,
+        "3": 93.9
+      }
+    },
+    "Seasonal baseline": {
+      "mae": 94.5,
+      "rmse": 132.3,
+      "range_coverage_pct": 65.0,
+      "n_tests": 531,
+      "mae_by_horizon": {
+        "1": 94.5,
+        "2": 94.5,
+        "3": 94.5
+      }
+    }
+  },
+  "forecast": [
+    {
+      "month": "2026-10",
+      "label": "Oct 2026",
+      "low_mm": 253,
+      "expected_mm": 293,
+      "high_mm": 327,
+      "normal_mm": 353
+    },
+    {
+      "month": "2026-11",
+      "label": "Nov 2026",
+      "low_mm": 205,
+      "expected_mm": 329,
+      "high_mm": 429,
+      "normal_mm": 345
+    },
+    {
+      "month": "2026-12",
+      "label": "Dec 2026",
+      "low_mm": 116,
+      "expected_mm": 257,
+      "high_mm": 423,
+      "normal_mm": 382
+    }
+  ],
+  "note": "Walk-forward test: models only saw data before each test year. PAGASA official forecasts remain the primary reference."
+}

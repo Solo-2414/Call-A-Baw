@@ -602,6 +602,11 @@
     border-color: var(--primary);
     background-color: #fff;
 }
+.auth-error {
+    color: var(--danger);
+    font-size: 0.9rem;
+    margin: 0 0 16px;
+}
 .modal-footer {
     margin-top: 18px;
     text-align: center;
